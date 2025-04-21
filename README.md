@@ -28,7 +28,7 @@ Questo progetto realizza un sistema di riconoscimento automatico delle targhe (A
 - Dopo il timeout, la sbarra si richiude automaticamente.
 
 ## 🔌 Schema del circuito
-![Schema del circuito](images/schema_circuito.png)
+![Schema del circuito](./schema_circuito.png)
 
 
 ## ☁️ Riconoscimento targa (ALPR)
