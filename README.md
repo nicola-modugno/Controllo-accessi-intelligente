@@ -11,12 +11,13 @@ Questo progetto realizza un sistema di riconoscimento automatico delle targhe (A
 
 ## 🧰 Componenti utilizzati
 
-Componente | Descrizione
-ESP32-CAM	 |Microcontrollore con fotocamera Wi-Fi integrata
-Sensore a infrarossi |	Rileva la presenza del veicolo
-Servo Motore |	Simula l'apertura e chiusura della sbarra
-Modulo Wi-Fi (integrato) |	Connessione al cloud
-FTDI Breakout Module |	Alimentazione dei moduli e flash del programma
+| Componente         | Descrizione                                  |
+|--------------------|----------------------------------------------|
+| ESP32-CAM          | Microcontrollore con fotocamera integrata    |
+| Sensore a infrarossi | Rileva la presenza di un veicolo            |
+| Arduino Uno/Nano   | Controllore logico e gestione servo          |
+| Servo Motore       | Simula apertura/chiusura della sbarra        |
+| FTDI Breakout Module    | Alimentazione dei moduli e flash del programma|
 
 ## 📸 Flusso di funzionamento
 - Il sensore IR rileva la presenza di un veicolo.
@@ -25,6 +26,10 @@ FTDI Breakout Module |	Alimentazione dei moduli e flash del programma
 - Arduino confronta la targa con una whitelist predefinita.
 - Se autorizzata, il servomotore apre la sbarra per alcuni secondi.
 - Dopo il timeout, la sbarra si richiude automaticamente.
+
+## 🔌 Schema del circuito
+![Schema del circuito](images/schema_circuito.png)
+
 
 ## ☁️ Riconoscimento targa (ALPR)
 Il servizio cloud esterno per l'analisi dell'immagine è:
