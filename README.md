@@ -40,3 +40,6 @@ Il servizio cloud esterno per l'analisi dell'immagine è:
 - Interfaccia web per gestire le targhe autorizzate
 - Log degli accessi con timestamp
 - Notifiche via Telegram o e-mail
+
+## 🎓 Progetto accademico
+Questo progetto è stato realizzato come parte dell’esame del corso di **Laboratorio di Making**.
