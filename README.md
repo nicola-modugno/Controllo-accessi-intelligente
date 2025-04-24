@@ -1,4 +1,5 @@
 ## 🚗 Controllo accessi intelligente con ESP32-CAM
+![Splash](./splash.png)
 Questo progetto realizza un sistema di riconoscimento automatico delle targhe (ALPR) per il controllo accessi veicolari, utilizzando una ESP32-CAM, un sensore a infrarossi, un servomotore e un microcontrollore Arduino. Il sistema rileva automaticamente l’arrivo di un veicolo, scatta una foto alla targa, la invia a un servizio cloud per il riconoscimento, e apre una sbarra automatica simulata se la targa è autorizzata.
 
 ## 🔧 Funzionalità principali
