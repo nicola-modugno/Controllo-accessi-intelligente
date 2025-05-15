@@ -16,8 +16,7 @@ Questo progetto realizza un sistema di riconoscimento automatico delle targhe (A
 |--------------------|----------------------------------------------|
 | ESP32-CAM          | Microcontrollore con fotocamera integrata    |
 | Sensore a infrarossi | Rileva la presenza di un veicolo            |
-| Arduino Uno/Nano   | Controllore logico e gestione servo          |
-| Servo Motore       | Simula apertura/chiusura della sbarra        |
+| Servomotore       | Simula apertura/chiusura della sbarra        |
 | FTDI Breakout Module    | Alimentazione dei moduli e flash del programma|
 
 ## 📸 Flusso di funzionamento
