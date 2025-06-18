@@ -57,6 +57,7 @@ String* user_passwordsfromSD;
 char bluetoothCMD;
 const uint8_t flagPassword = 0xFF;
 const uint8_t flagWifiData = 0x00;
+const uint8_t flagAdminPwd = 0x0E;
 String ssid = "";
 String password = "";
 //String serverName = "www.circuitdigest.cloud";
@@ -66,11 +67,11 @@ String serverName = "10.0.0.1";     // IP del tuo server
 int serverPort = 5000;
 String serverPath = "/upload";
 String apiKey = "";
-String passwords[] = {"Zy1Dhs8FW7Kx", "Ed5zTS8ocUfl", "jcht2rCgbMYB", "poldmeMpfrxR"};
+String passwords[] = {"Zy1Dhs8FW7Kx", "Ed5zTS8ocUfl", "jcht2rCgbMYB", "poldmeMpfrxR"}; //Passwords per aprire il cancello
 String admin_keys[] = {"Ed5zT1S8ocUfl"};
 char requestNumber = 0;
 unsigned char NumOfPlates = 2;
-unsigned long int starting_timestamp = 1747339200;
+unsigned char secondi_cancello_aperto = 2;
 const char* botApiToken = "";
 const unsigned long intervallo_bot = 1000;
 unsigned long ultima_chiamata_telegram_bot = 0;
@@ -84,7 +85,7 @@ String last_plate_found;
 
 UniversalTelegramBot bot(botApiToken, client);
 
-void updateData(unsigned char numofplates, unsigned long int timeStamp, String* plateNumbers, String* passwords, char requestnumber, String ssid, String password) {
+void updateData(unsigned char numofplates, unsigned char secondi_cancello, String* plateNumbers, String* passwords, String ssid, String password, String* adminkeys) {
   // Apri file una sola volta
   File file = SD_MMC.open("/data", FILE_WRITE);
   if (!file) {
@@ -99,22 +100,11 @@ void updateData(unsigned char numofplates, unsigned long int timeStamp, String* 
     Serial.printf("Written number of plates: %d\n", numofplates);
   }
 
-  // Modifica il requestnumber, è utile per notificare il possessore o il manutentore di aggiornare la chiave dell'api quando raggiunge l'80% di utilizzo.
-  // Può essere usato per calcolare le metriche.
-  if (requestnumber != -1) {
-    file.seek(1); // offset di requestnumber per sapere a quale richiesta mi trovo
-    file.write((uint8_t*)&requestnumber, sizeof(requestNumber));
-    Serial.printf("Written request number (%d)\n", requestnumber);
-  }
-
-  // Modifica il timestamp. Corrisponde alla data in cui è stata generata chiave. 
-  // Può essere utile per notificare il manutentore quanto manca allo scadere della chiave.
-  if (timeStamp > 0) {
+  // Modifica per quanto tempo il cancello rimane aperto.
+  if (secondi_cancello > 0) {
     file.seek(2); // offset di requestnumber per sapere a quale richiesta mi trovo
     
-    file.write((uint8_t*)&timeStamp, 4);
-    Serial.printf("Written timestamp %lu, its size: %lu HEX: %02X %02X %02X\n", timeStamp);
-    Serial.printf("starting_timestamp size: %lu HEX: %02X %02X %02X\n", starting_timestamp);
+    file.write((uint8_t*)&secondi_cancello, sizeof(secondi_cancello));
   }
   
   // Modifica con platesArray solo se viene passato
@@ -146,6 +136,15 @@ void updateData(unsigned char numofplates, unsigned long int timeStamp, String* 
         Serial.printf("Written password #%d: %s\n", password);
       }
     }
+    if (adminkeys != NULL) {
+      file.write(flagAdminPwd); // salva il flag
+      for (int i = 0; i < NUM_ADMIN_KEYS; i++) {
+        uint8_t len = adminkeys[i].length();
+        file.write(len); // salva la lunghezza della stringa
+        file.write((const uint8_t*)adminkeys[i].c_str(), len); // salva la stringa
+        Serial.printf("Written plate #%d: %s\n", i, adminkeys[i]);
+      }
+    } 
   file.close();
 }
 
@@ -156,24 +155,13 @@ void loadData() {
     return;
   }
 
-  unsigned char pippo;
   // 1. Leggi NumOfPlates
   file.seek(0);
-  file.read((uint8_t*)&pippo, sizeof(pippo));
+  file.read((uint8_t*)&NumOfPlates, sizeof(NumOfPlates));
   Serial.print("Numero targhe (NumOfPlates): ");
-  Serial.println(pippo);
+  Serial.println(NumOfPlates);
 
-  unsigned char paperino;
-  // 2. Leggi requestNumber
-  file.read((uint8_t*)&paperino, sizeof(paperino));
-  Serial.print("Request number: ");
-  Serial.println(paperino);
-
-  // 3. Leggi starting_timestamp
-  unsigned long int pluto;
-  file.read((uint8_t*)&pluto, 4);
-
-  Serial.printf("Timestamp (starting_timestamp): %d\n", pluto);
+  file.read((uint8_t*)&secondi_cancello_aperto, sizeof(secondi_cancello_aperto));
 
   // 4. Leggi platesfromSD
   if (platesfromSD != nullptr) {
@@ -225,8 +213,8 @@ void loadData() {
       Serial.println(platesfromSD[i]);
     }
   }
+  uint8_t nextByte;
   if (ssid != nullptr){
-    uint8_t nextByte;
     if (file.read(&nextByte, 1) == flagWifiData){
       nextByte = file.read(&nextByte, 1); // legge la lunghezza dell'ssid
       
@@ -250,6 +238,18 @@ void loadData() {
         password = String(buf); // assegna alla variabile globale
         Serial.printf("password read: %d\n", password);
       }
+    }
+    if (file.read(&nextByte, 1) == flagAdminPwd){
+      nextByte = file.read(&nextByte, 1); // legge la lunghezza dell'ssid
+      
+      Serial.printf("Length read: %d\n", nextByte);
+
+      char buf[256] = {0}; // buffer temporaneo, sicuro fino a 255 caratteri
+      file.read((uint8_t*)buf, nextByte); // legge i `len` byte
+      buf[nextByte] = '\0'; // null-terminate
+
+      admin_keys[0] = String(buf); // assegna alla variabile globale
+      Serial.printf("admin key read: %d\n", admin_keys[0]);
     }  
   }
   file.close();
@@ -270,7 +270,7 @@ void waitForBluetoothWiFiConfig() {
         SerialBT.println("Ricevuto. SSID: " + ssid + " | PASS: " + password);
 
         // Salva su microSD se già supportato
-        updateData(NumOfPlates, starting_timestamp, plates, user_passwords, requestNumber, ssid, password);
+        updateData(NumOfPlates, secondi_cancello_aperto, plates, user_passwords, ssid, password, admin_keys);
 
         SerialBT.println("🔁 Riavvio in corso...");
         delay(1500);
@@ -443,7 +443,7 @@ void aggiungiTarga(String plate, String password) {
   nuoveTarghe[NumOfPlates] = plate;
   nuovePassword[NumOfPlates] = password;
   NumOfPlates++;
-  updateData(NumOfPlates, 0, nuoveTarghe, nuovePassword, requestNumber, ssid, password); // Aggiorna file SD
+  updateData(NumOfPlates, secondi_cancello_aperto, nuoveTarghe, nuovePassword, ssid, password, admin_keys); // Aggiorna file SD
   delete[] platesfromSD;
   platesfromSD = nuoveTarghe;
   delete[] user_passwordsfromSD;
@@ -464,7 +464,7 @@ void rimuoviTarga(String plate) {
     }
   }
   NumOfPlates--;
-  updateData(NumOfPlates, 0, nuoveTarghe, nuovePassword, requestNumber, ssid, password);
+  updateData(NumOfPlates, secondi_cancello_aperto, nuoveTarghe, nuovePassword, ssid, password, admin_keys);
   delete[] platesfromSD;
   platesfromSD = nuoveTarghe;
   delete[] user_passwordsfromSD;
@@ -538,7 +538,7 @@ void setup() {
 
   Serial.println("microSD\tOK");
 
-  updateData(NumOfPlates, starting_timestamp, plates, user_passwords, requestNumber, ssid, password);
+  updateData(NumOfPlates, secondi_cancello_aperto, plates, user_passwords, ssid, password, admin_keys);
   loadData();
 
   
