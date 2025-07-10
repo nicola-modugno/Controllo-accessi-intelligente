@@ -438,7 +438,7 @@ void gestisci_messaggi(int num_nuovi_messaggi) {
 
         if (isAdminKeyValid(key)) {
           if (min >= 0 || max <= 1000) {
-            loadMetrics(tentativi_falliti, aperture_cancello, maxDistance, minDistance, last_plate_found, tolleranza, sogliaTempoFermo);
+            loadMetrics(tentativi_falliti, aperture_cancello, maxDistance, minDistance, last_plate_found, sogliaTempoFermo, tolleranza);
             maxDistance = max;
             minDistance = min;
             saveMetrics(tentativi_falliti, aperture_cancello, maxDistance, minDistance, last_plate_found, tolleranza, sogliaTempoFermo);

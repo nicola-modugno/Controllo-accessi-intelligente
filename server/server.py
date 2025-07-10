@@ -5,6 +5,7 @@ import os
 import json
 import uuid
 import subprocess
+import platform
 
 app = Flask(__name__)
 CORS(app)
@@ -61,42 +62,108 @@ def upload_image():
     print(f"🌍 Country code ricevuto: {country_code}")
 
     filename = f"{uuid.uuid4()}.jpg"
-    print(filename);
+    print(f"📁 Filename: {filename}")
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    print(filepath);
+    print(f"📁 Filepath: {filepath}")
     image.save(filepath)
     print(f"✅ Immagine salvata in: {filepath}")
-    alpr_path = "C:\\Users\\doomo\\Desktop\\Laboratorio di Making\\openalpr_64\\alpr.exe"  # <-- percorso reale a alpr.exe
-    image_path = os.path.abspath(UPLOAD_FOLDER)
+    
+    # Ottieni il path assoluto dell'upload folder
+    upload_abs_path = os.path.abspath(UPLOAD_FOLDER)
+    print(f"📁 Upload absolute path: {upload_abs_path}")
+    
+    # Verifica che il file esista
+    if not os.path.exists(filepath):
+        print("❌ File non trovato dopo il salvataggio")
+        return jsonify({'error': 'File not saved correctly'}), 500
     
     try:
-        #cmd = [
-        #    alpr_path,
-        #    "-c", country_code,
-        #    "--json",
-        #    image_path
-        #]
-
+        # Comando Docker con debug migliorato
+        # Converti il path Windows per Docker
+        volume_path = upload_abs_path.replace('\\', '/')
+        if len(volume_path) > 1 and volume_path[1] == ':':
+            # C:/path -> /c/path
+            volume_path = f"/{volume_path[0].lower()}{volume_path[2:]}"
+            
         docker_cmd = [
             "docker", "run", "--rm",
-            "-v", f"{os.path.abspath(UPLOAD_FOLDER)}:/data:ro",
+            "-v", f"{volume_path}:/data:ro",
             "openalpr/openalpr",
             "-c", country_code,
             "--json",
             f"/data/{filename}"
         ]
 
+        print(f"⚙️ Comando Docker: {' '.join(docker_cmd)}")
+        
+        # Test se Docker è disponibile
+        try:
+            test_result = subprocess.run(["docker", "--version"], 
+                                       stdout=subprocess.PIPE, 
+                                       stderr=subprocess.PIPE, 
+                                       text=True, 
+                                       timeout=5)
+            if test_result.returncode != 0:
+                print("❌ Docker non disponibile")
+                return jsonify({'error': 'Docker not available'}), 500
+            print(f"✅ Docker version: {test_result.stdout.strip()}")
+        except subprocess.TimeoutExpired:
+            print("❌ Docker timeout")
+            return jsonify({'error': 'Docker timeout'}), 500
+        except FileNotFoundError:
+            print("❌ Docker non trovato")
+            return jsonify({'error': 'Docker not found'}), 500
+
+        # Test se l'immagine OpenALPR esiste
+        try:
+            image_check = subprocess.run(["docker", "images", "openalpr/openalpr"], 
+                                       stdout=subprocess.PIPE, 
+                                       stderr=subprocess.PIPE, 
+                                       text=True, 
+                                       timeout=10)
+            if "openalpr/openalpr" not in image_check.stdout:
+                print("❌ Immagine OpenALPR non trovata, scaricamento...")
+                pull_result = subprocess.run(["docker", "pull", "openalpr/openalpr"], 
+                                           stdout=subprocess.PIPE, 
+                                           stderr=subprocess.PIPE, 
+                                           text=True, 
+                                           timeout=120)
+                if pull_result.returncode != 0:
+                    print(f"❌ Errore nel pull: {pull_result.stderr}")
+                    return jsonify({'error': 'Failed to pull OpenALPR image'}), 500
+                print("✅ Immagine OpenALPR scaricata")
+        except subprocess.TimeoutExpired:
+            print("❌ Timeout nel check dell'immagine")
+            return jsonify({'error': 'Docker image check timeout'}), 500
+
         print("⚙️ Esecuzione OpenALPR...")
-        result = subprocess.run(docker_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        #result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+        result = subprocess.run(docker_cmd, 
+                              stdout=subprocess.PIPE, 
+                              stderr=subprocess.PIPE, 
+                              text=True, 
+                              timeout=30)
+
+        print(f"🔧 Return code: {result.returncode}")
+        print(f"📤 STDOUT: {result.stdout}")
+        print(f"📤 STDERR: {result.stderr}")
 
         if result.returncode != 0:
-            print("❌ Errore:")
-            print(result.stderr)
-            return jsonify({'error': 'Docker/OpenALPR failed'}), 500
+            print("❌ Errore: Docker/OpenALPR failed")
+            error_msg = result.stderr if result.stderr else "Unknown Docker error"
+            print(f"❌ Dettaglio errore: {error_msg}")
+            return jsonify({'error': f'Docker/OpenALPR failed: {error_msg}'}), 500
+
+        if not result.stdout.strip():
+            print("❌ Output vuoto da OpenALPR")
+            return jsonify({'error': 'Empty output from OpenALPR'}), 500
 
         print("✅ Output ricevuto")
-        data = json.loads(result.stdout)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            print(f"❌ Errore JSON: {e}")
+            print(f"❌ Output ricevuto: {result.stdout}")
+            return jsonify({'error': 'Invalid JSON from OpenALPR'}), 500
 
         plate = ""
         if data.get("results"):
@@ -112,9 +179,12 @@ def upload_image():
             print("❌ Targa non autorizzata")
             return jsonify({"access": 1, "plate": plate}), 200
 
+    except subprocess.TimeoutExpired:
+        print("❌ Timeout OpenALPR")
+        return jsonify({'error': 'OpenALPR timeout'}), 500
     except Exception as e:
         print(f"❌ Errore interno: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @app.route("/check_password", methods=["POST"])
 def check_password():
