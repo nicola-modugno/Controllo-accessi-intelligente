@@ -543,8 +543,6 @@ void gestisci_messaggi(int num_nuovi_messaggi) {
       report += "• Country Code (Tipo di targa): " + String(cc) + "\n";
       report += "• Aperture cancello: " + String(aperture_cancello) + "\n";
       report += "• Tentativi falliti: " + String(tentativi_falliti) + "\n";
-      report += "• % Errore: " + String(100*tentativi_falliti/aperture_cancello) + "%\n";
-      report += "• % Successo: " + String(100*(aperture_cancello-tentativi_falliti)/aperture_cancello) + "%\n";
       report += "• Ultima targa individuata: "+ last_plate_found + "\n";
 
       bot.sendMessage(chat_id, report, "Markdown");
