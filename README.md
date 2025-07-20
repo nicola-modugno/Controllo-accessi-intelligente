@@ -1,46 +1,77 @@
 ## 🚗 Controllo accessi intelligente con ESP32-CAM
 ![Splash](./splash.png)
-Questo progetto realizza un sistema di riconoscimento automatico delle targhe (ALPR) per il controllo accessi veicolari, utilizzando una ESP32-CAM, un sensore a infrarossi, un servomotore e un microcontrollore Arduino. Il sistema rileva automaticamente l’arrivo di un veicolo, scatta una foto alla targa, la invia a un servizio cloud per il riconoscimento, e apre una sbarra automatica simulata se la targa è autorizzata.
+
+Questo progetto realizza un sistema intelligente di controllo accessi veicolari basato sul **riconoscimento automatico delle targhe (ANPR)**, utilizzando una **ESP32-CAM**, un **sensore a ultrasuoni**, un **servomotore**, e un **telecomando RF**. Il sistema rileva automaticamente la presenza di un veicolo, cattura un'immagine della targa e la invia a un **server ANPR locale** (basato su OpenALPR). Se la targa è autorizzata, un attuatore meccanico simula la pressione del pulsante del telecomando per aprire il cancello.
+
+Il sistema è **low-cost**, **facilmente configurabile via Bluetooth**, e include una modalità di **controllo manuale e diagnostica tramite bot Telegram**.
+
+---
 
 ## 🔧 Funzionalità principali
-- Rilevamento veicolo tramite sensore a infrarossi
-- Scatto automatico della foto con ESP32-CAM
-- Invio immagine al cloud per riconoscimento targa (ALPR)
-- Verifica della targa autorizzata da Arduino
-- Apertura automatica della sbarra con un servomotore
-- Chiusura automatica dopo alcuni secondi
+
+- Rilevamento presenza veicolo con sensore a ultrasuoni
+- Scatto automatico con ESP32-CAM
+- Invio immagine a server ANPR (OpenALPR) via HTTP
+- Verifica targa contro lista autorizzata
+- Apertura cancello tramite servomotore che preme il pulsante del telecomando
+- Configurazione iniziale via Bluetooth
+- Apertura manuale e consultazione metriche via bot Telegram
+
+---
 
 ## 🧰 Componenti utilizzati
 
-| Componente         | Descrizione                                  |
-|--------------------|----------------------------------------------|
-| ESP32-CAM          | Microcontrollore con fotocamera integrata    |
-| Sensore a infrarossi | Rileva la presenza di un veicolo            |
-| Arduino Uno/Nano   | Controllore logico e gestione servo          |
-| Servo Motore       | Simula apertura/chiusura della sbarra        |
-| FTDI Breakout Module    | Alimentazione dei moduli e flash del programma|
+| Componente            | Descrizione                                         |
+|-----------------------|-----------------------------------------------------|
+| ESP32-CAM             | Microcontrollore con fotocamera integrata          |
+| Sensore a ultrasuoni  | Rileva presenza del veicolo                        |
+| Servo SG90            | Premitura fisica del pulsante su telecomando RF   |
+| Modulo FTDI           | Alimentazione e flashing firmware per ESP32-CAM   |
+| Telecomando RF        | Interfaccia con il sistema di apertura esistente   |
+| Case 3D               | Contenitore stampato in 3D per la protezione       |
+| Pozzetto elettrico    | Alloggiamento esterno del sistema                  |
+
+---
 
 ## 📸 Flusso di funzionamento
-- Il sensore IR rileva la presenza di un veicolo.
-- L’ESP32-CAM scatta una foto e la invia al cloud (via HTTP).
-- Il cloud restituisce il numero di targa riconosciuto.
-- Arduino confronta la targa con una whitelist predefinita.
-- Se autorizzata, il servomotore apre la sbarra per alcuni secondi.
-- Dopo il timeout, la sbarra si richiude automaticamente.
+
+1. Il sensore a ultrasuoni rileva la presenza stabile di un veicolo.
+2. L’ESP32-CAM scatta una foto e la invia via HTTP al server ANPR.
+3. Il server (basato su Docker/OpenALPR) estrae il numero di targa.
+4. Se la targa è autorizzata, il server invia un comando di apertura.
+5. L’ESP32-CAM attiva il servomotore per premere il pulsante del telecomando.
+6. Il cancello si apre; dopo un tempo configurato, il sistema si resetta.
+
+---
+
+## 📲 Comandi Telegram (admin only)
+
+- `/opengate <admin_key>` — Apertura manuale cancello
+- `/metrics <admin_key>` — Visualizzazione metriche
+- `/cc <country_code> <admin_key>` — Imposta formato targa
+- `/cancello <ms> <admin_key>` — Tempo ciclo apertura/chiusura
+- `/d <max> <min> <admin_key>` — Imposta distanza operativa ultrasuoni
+- `/tolleranza <cm> <admin_key>` — Imposta tolleranza movimento
+- `/tempofermo <ms> <admin_key>` — Imposta tempo rilevamento veicolo fermo
+
+---
 
 ## 🔌 Schema del circuito
+
 ![Schema del circuito](./schema_circuito.png)
 
+---
 
-## ☁️ Riconoscimento targa (ALPR)
-Il servizio cloud esterno per l'analisi dell'immagine è:
-[CircuitDigest](https://www.circuitdigest.cloud/)
+## 💡 Estensioni possibili
 
-## 💡 Possibili estensioni
-- Integrazione con database remoto (Firebase, MySQL)
-- Interfaccia web per gestire le targhe autorizzate
-- Log degli accessi con timestamp
-- Notifiche via Telegram o e-mail
+- Integrazione con dashboard web o app mobile
+- Gestione targhe via interfaccia grafica
+- Logging avanzato degli accessi con timestamp
+- Notifiche via Telegram o email
+- Integrazione NFC o RFID come metodo di fallback
+
+---
 
 ## 🎓 Progetto accademico
-Questo progetto è stato realizzato come parte dell’esame del corso di **Laboratorio di Making**.
+
+Questo progetto è stato realizzato come parte dell’esame del corso di **Laboratorio di Making**, Università di Bologna — A.A. 2024/2025.
