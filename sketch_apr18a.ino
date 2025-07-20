@@ -46,7 +46,7 @@ String ssid = "";
 String password = "";
 String cc = "";
 String serverName = "192.168.43.144";//"192.168.43.144";     // IP del server
-unsigned char configurato = 0;
+unsigned char configurato = 0; //0 nessuna configurazione, 1 configurazione bluetooth eseguita con successo, 2 caricamento sul server completato
 int serverPort = 5000;
 String serverPath = "/upload";
 String adminKey = "";
@@ -157,13 +157,6 @@ void loadWiFiConfig(String &ssid, String &password, unsigned char &configurato, 
   Serial.println("😎👍 Configurazione WiFi letta da Preferences.");
 }
 
-unsigned char ConfiguratoState() {
-  preferences.begin("wifi_config", true);
-  unsigned char stato = preferences.getUChar("configurato", false);
-  preferences.end();
-  return stato;
-}
-
 void resetWiFiConfig() {
   preferences.begin("wifi_config", false);
   preferences.clear();  // Cancella tutte le chiavi nel namespace
@@ -176,7 +169,7 @@ void sendPlateToServer(String plate, String adminKey) {
   const int port = 5000;
 
   if (!client.connect(server, port)) {
-    Serial.println("⛔ Impossibile connettersi al server");
+    Serial.println("⛔ Impossibile connettersi al server. Non ho potuto inviare plate e adminKey al server");
     return;
   }
 
@@ -199,6 +192,8 @@ void sendPlateToServer(String plate, String adminKey) {
 
   client.stop();
   Serial.println("😎👍 Dati inviati al server");
+  configurato = 2;
+  saveWiFiConfig(ssid, password, configurato, plate, adminKey);
 }
 
 void waitForBluetoothWiFiConfig() {
@@ -256,6 +251,7 @@ void waitForBluetoothWiFiConfig() {
         SerialBT.println("MAX: " + String(maxDistance) + " cm");
         SerialBT.println("MIN: " + String(minDistance) + " cm");
         SerialBT.println("CC: " + cc);
+        SerialBT.println("T: " + String(durata_ciclo_cancello));
 
         // Salva tutto nelle Preferences
         preferences.begin("wifi_config", false);
@@ -274,7 +270,8 @@ void waitForBluetoothWiFiConfig() {
         
         SerialBT.println("😎👍 Dati configurazione salvati. 🪛🤖 Per qualunque modifica contattare il Bot Telegram @LabMakingBot");
         Serial.println("😎👍 Dati configurazione salvati su Preferences. 🪛🤖 Per qualunque modifica contattare il Bot Telegram @LabMakingBot");
-        break;
+        delay(100);
+        return;
       } else {
         SerialBT.println("⛔ Formato non valido. Usa:");
         SerialBT.println("SSID=xxx;PASS=yyy;PLATE=zzz;ADMIN=kkk;MAX=ttt;MIN=www;CC=uu;T=ttt");
@@ -725,6 +722,7 @@ void testConnection() {
 }
 
 void setup() {
+
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   Serial.begin(115200);
   Serial.println("📦 Avvio setup");
@@ -757,7 +755,7 @@ void setup() {
     Serial.print("\n😎👍 Connesso. IP: ");
     Serial.println(WiFi.localIP());
     if (configurato == 1){
-      configurato = 2;
+      Serial.printf("\nSalvo ssid: %s, password: %s, configurato: %d, plate: %s, adminkey: %s ", ssid, password, configurato, plate, adminKey);
       saveWiFiConfig(ssid, password, configurato, plate, adminKey);
       sendPlateToServer(plate, adminKey);
     }
